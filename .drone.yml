@@ -15,3 +15,14 @@ steps:
       - echo "127.0.0.1 warehouse" >> /etc/hosts
       - echo "127.0.0.1 delivery" >> /etc/hosts
       - gradle clean compileJava test jacocoTestReport --info
+
+  - name: coverage
+    image: plugins/codecov
+    settings:
+      token:
+        from_secret: COVERAGE_TOKEN
+      files:
+        - '*.xml'
+      paths:
+        - build/reports/jacoco
+      verbose: true
