@@ -1,0 +1,15 @@
+---
+kind: pipeline
+type: docker
+name: default
+
+steps:
+  - name: build
+    image: gradle:5.6-jdk11
+    environment:
+      BINTRAY_USER:
+        from_secret: BINTRAY_USER
+      BINTRAY_TOKEN:
+        from_secret: BINTRAY_TOKEN
+    commands:
+      - gradle clean compileJava test jacocoTestReport --info
