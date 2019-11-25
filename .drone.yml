@@ -12,4 +12,6 @@ steps:
       BINTRAY_TOKEN:
         from_secret: BINTRAY_TOKEN
     commands:
+      - echo "127.0.0.1 warehouse" >> /etc/hosts
+      - echo "127.0.0.1 delivery" >> /etc/hosts
       - gradle clean compileJava test jacocoTestReport --info
