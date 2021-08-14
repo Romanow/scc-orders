@@ -1,14 +1,11 @@
-package ru.romanow.orders.service;
+package ru.romanow.orders.service
 
-import ru.romanow.orders.domain.Order;
-import ru.romanow.orders.model.OrderRequest;
+import ru.romanow.orders.domain.Order
+import ru.romanow.orders.model.OrderRequest
+import java.util.*
+import javax.annotation.Nonnull
 
-import javax.annotation.Nonnull;
-import java.util.UUID;
-
-public interface OrderService {
-    void createOrder(@Nonnull UUID orderUid, @Nonnull OrderRequest request);
-
-    @Nonnull
-    Order getOrderByUid(@Nonnull UUID orderUid);
+interface OrderService {
+    fun createOrder(orderUid: UUID, request: OrderRequest)
+    fun getOrderByUid(orderUid: UUID): Order
 }

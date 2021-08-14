@@ -1,51 +1,34 @@
-package ru.romanow.orders.service;
+package ru.romanow.orders.service
 
-import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import ru.romanow.orders.domain.Order;
-import ru.romanow.orders.model.OrderRequest;
-import ru.romanow.orders.repository.OrdersRepository;
-
-import javax.annotation.Nonnull;
-import javax.persistence.EntityNotFoundException;
-import java.util.UUID;
-
-import static com.google.common.base.Joiner.on;
-import static java.lang.String.format;
-import static org.slf4j.LoggerFactory.getLogger;
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import ru.romanow.orders.domain.Order
+import ru.romanow.orders.model.OrderRequest
+import ru.romanow.orders.repository.OrdersRepository
+import java.util.*
+import javax.annotation.Nonnull
+import javax.persistence.EntityNotFoundException
 
 @Service
-@RequiredArgsConstructor
-public class OrderServiceImpl
-        implements OrderService {
-    private static final Logger logger = getLogger(OrderServiceImpl.class);
+class OrderServiceImpl(
+    private val ordersRepository: OrdersRepository
+) : OrderService {
 
-    private final OrdersRepository ordersRepository;
-
-    @Override
     @Transactional
-    public void createOrder(@Nonnull UUID orderUid, @Nonnull OrderRequest request) {
-        Order order =
-                new Order()
-                        .setUid(orderUid)
-                        .setItems(on(",").join(request.getItemUids()))
-                        .setFirstName(request.getFirstName())
-                        .setLastName(request.getLastName())
-                        .setAddress(request.getAddress());
-
-        order = ordersRepository.save(order);
-        if (logger.isDebugEnabled()) {
-            logger.debug("Create new order '{}'", order);
-        }
+    override fun createOrder(orderUid: UUID, request: OrderRequest) {
+        val order = Order(
+            uid = orderUid,
+            items = request.itemUids,
+            firstName = request.firstName,
+            lastName = request.lastName,
+            address = request.address
+        )
+        ordersRepository.save(order)
     }
 
     @Nonnull
-    @Override
     @Transactional(readOnly = true)
-    public Order getOrderByUid(@Nonnull UUID orderUid) {
-        return ordersRepository.findByUid(orderUid)
-                .orElseThrow(() -> new EntityNotFoundException(format("Order '%s' not found", orderUid)));
-    }
+    override fun getOrderByUid(orderUid: UUID): Order =
+        ordersRepository.findByUid(orderUid)
+            .orElseThrow { EntityNotFoundException("Order '$orderUid' not found") }
 }

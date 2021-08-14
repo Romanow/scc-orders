@@ -1,110 +1,77 @@
-package ru.romanow.orders.service;
+package ru.romanow.orders.service
 
-import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClientResponseException;
-import org.springframework.web.client.RestTemplate;
-import ru.romanow.orders.domain.Order;
-import ru.romanow.orders.exceptions.RestRequestException;
-import ru.romanow.orders.model.*;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.util.UUID;
-
-import static java.lang.String.format;
-import static java.util.Optional.ofNullable;
-import static org.slf4j.LoggerFactory.getLogger;
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Service
+import org.springframework.web.client.RestClientResponseException
+import org.springframework.web.client.RestTemplate
+import ru.romanow.orders.domain.Order
+import ru.romanow.orders.exceptions.RestRequestException
+import ru.romanow.orders.model.*
+import java.util.*
 
 @Service
-@RequiredArgsConstructor
-public class OrderManageServiceImpl
-        implements OrderManageService {
-    private static final Logger logger = getLogger(OrderManageServiceImpl.class);
+class OrderManageServiceImpl(
+    private val restTemplate: RestTemplate,
+    private val orderService: OrderService,
+    @Value("\${warehouse.service.url}")
+    private val warehouseUrl: String,
+    @Value("\${delivery.service.url}")
+    private val deliveryUrl: String,
+) : OrderManageService {
 
-    private static final String WAREHOUSE_URL = "http://warehouse:8070/api/v1/items/";
-    private static final String DELIVERY_URL = "http://delivery:8090/api/v1/delivery/";
-    private static final String TAKE_PATH = "/take";
-    private static final String STATE_PATH = "/state";
-    private static final String DELIVERY_PATH = "/deliver";
-
-    private final RestTemplate restTemplate;
-    private final OrderService orderService;
-    private final UUIDGenerator uuidGenerator;
-
-    @Nonnull
-    @Override
-    public UUID makeOrder(@Nonnull OrderRequest request) {
-        final UUID orderUid = uuidGenerator.generate();
-        final TakeItemsRequest takeItemRequest = new TakeItemsRequest(request.getItemUids());
-        final String url = format("%s%s%s", WAREHOUSE_URL, orderUid, TAKE_PATH);
+    override fun makeOrder(request: OrderRequest): UUID {
+        val orderUid: UUID = UUID.randomUUID()
+        val takeItemRequest = TakeItemsRequest(request.itemUids)
+        val url = "$warehouseUrl/api/v1/items/$orderUid/take"
         try {
-            final OrderItemResponse response = restTemplate.postForObject(url, takeItemRequest, OrderItemResponse.class);
-            logger.debug("Reserve items on warehouse '{}'", response);
-        } catch (RestClientResponseException exception) {
-            final String message = format("Error request to '%s': %d:%s", url, exception.getRawStatusCode(), exception.getResponseBodyAsString());
-            throw new RestRequestException(message);
+            restTemplate.postForObject(url, takeItemRequest, OrderItemResponse::class.java)
+        } catch (exception: RestClientResponseException) {
+            throw RestRequestException("Error request to '$url': ${exception.rawStatusCode}:${exception.responseBodyAsString}")
         }
-
-        orderService.createOrder(orderUid, request);
-
-        return orderUid;
+        orderService.createOrder(orderUid, request)
+        return orderUid
     }
 
-    @Nonnull
-    @Override
-    public OrderInfoResponse status(@Nonnull UUID orderUid) {
-        final Order order = orderService.getOrderByUid(orderUid);
-        final OrderItemResponse orderInfo = makeWarehouseStateRequest(orderUid);
-        return buildOrderInfoResponse(order, orderInfo);
+    override fun status(orderUid: UUID): OrderInfoResponse {
+        val order = orderService.getOrderByUid(orderUid)
+        val orderInfo: OrderItemResponse = makeWarehouseStateRequest(orderUid)
+        return buildOrderInfoResponse(order, orderInfo)
     }
 
-    @Nonnull
-    @Override
-    public OrderInfoResponse process(@Nonnull UUID orderUid) {
-        final Order order = orderService.getOrderByUid(orderUid);
-        final OrderItemResponse orderInfo = makeWarehouseStateRequest(orderUid);
-
-        makeDeliveryRequest(orderUid, order.getFirstName(), order.getLastName(), order.getAddress());
-
-        return buildOrderInfoResponse(order, orderInfo);
+    override fun process(orderUid: UUID): OrderInfoResponse {
+        val order = orderService.getOrderByUid(orderUid)
+        val orderInfo: OrderItemResponse = makeWarehouseStateRequest(orderUid)
+        makeDeliveryRequest(orderUid, order.firstName!!, order.lastName!!, order.address!!)
+        return buildOrderInfoResponse(order, orderInfo)
     }
 
-    @Nonnull
-    private OrderItemResponse makeWarehouseStateRequest(@Nonnull UUID orderUid) {
-        final String url = format("%s%s%s", WAREHOUSE_URL, orderUid, STATE_PATH);
-        try {
-            return ofNullable(restTemplate.getForObject(url, OrderItemResponse.class))
-                    .orElseThrow(() -> new RestRequestException("Warehouse returned empty response"));
-        } catch (RestClientResponseException exception) {
-            final String message = format("Error request to '%s': %d:%s", url, exception.getRawStatusCode(), exception.getResponseBodyAsString());
-            throw new RestRequestException(message);
+    private fun makeWarehouseStateRequest(orderUid: UUID?): OrderItemResponse {
+        val url = "$warehouseUrl/api/v1/items/$orderUid/state"
+        return try {
+            Optional.ofNullable(restTemplate.getForObject(url, OrderItemResponse::class.java))
+                .orElseThrow { RestRequestException("Warehouse returned empty response") }
+        } catch (exception: RestClientResponseException) {
+            throw RestRequestException("Error request to '$url': ${exception.rawStatusCode}:${exception.responseBodyAsString}")
         }
     }
 
-    private void makeDeliveryRequest(@Nonnull UUID orderUid, @Nonnull String firstName, @Nullable String lastName, @Nonnull String address) {
-        final String url = format("%s%s%s", DELIVERY_URL, orderUid, DELIVERY_PATH);
+    private fun makeDeliveryRequest(orderUid: UUID, firstName: String, lastName: String, address: String) {
+        val url = "$deliveryUrl/api/v1/items/$orderUid/deliver"
         try {
-            final DeliveryRequest deliveryRequest = new DeliveryRequest()
-                    .setFirstName(firstName)
-                    .setLastName(lastName)
-                    .setAddress(address);
-            restTemplate.postForObject(url, deliveryRequest, Void.class);
-        } catch (RestClientResponseException exception) {
-            final String message = format("Error request to '%s': %d:%s", url, exception.getRawStatusCode(), exception.getResponseBodyAsString());
-            throw new RestRequestException(message);
+            val deliveryRequest = DeliveryRequest(firstName, lastName, address)
+            restTemplate.postForObject(url, deliveryRequest, Void::class.java)
+        } catch (exception: RestClientResponseException) {
+            throw RestRequestException("Error request to '$url': ${exception.rawStatusCode}:${exception.responseBodyAsString}")
         }
     }
 
-    @Nonnull
-    private OrderInfoResponse buildOrderInfoResponse(@Nonnull Order order, @Nonnull OrderItemResponse orderInfo) {
-        return new OrderInfoResponse()
-                .setOrderUid(order.getUid())
-                .setState(orderInfo.getState())
-                .setItems(orderInfo.getItems())
-                .setFirstName(order.getFirstName())
-                .setLastName(order.getLastName())
-                .setAddress(order.getAddress());
-    }
+    private fun buildOrderInfoResponse(order: Order, orderInfo: OrderItemResponse) =
+        OrderInfoResponse(
+            orderUid = order.uid!!,
+            state = orderInfo.state,
+            items = orderInfo.items,
+            firstName = order.firstName,
+            lastName = order.lastName,
+            address = order.address
+        )
 }

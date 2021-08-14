@@ -1,201 +1,217 @@
-package ru.romanow.orders.service;
+package ru.romanow.orders.service
 
-import groovy.json.JsonOutput;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.cloud.contract.stubrunner.spring.AutoConfigureStubRunner;
-import org.springframework.cloud.contract.stubrunner.spring.StubRunnerProperties;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
-import ru.romanow.orders.OrdersTestConfiguration;
-import ru.romanow.orders.domain.Order;
-import ru.romanow.orders.exceptions.RestRequestException;
-import ru.romanow.orders.model.ErrorResponse;
-import ru.romanow.orders.model.OrderInfoResponse;
-import ru.romanow.orders.model.OrderRequest;
-import ru.romanow.orders.model.enums.OrderState;
+import com.google.gson.Gson
+import org.apache.commons.lang3.RandomStringUtils.randomAlphabetic
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Disabled
+import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.eq
+import org.mockito.Mockito.*
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.cloud.contract.stubrunner.spring.AutoConfigureStubRunner
+import org.springframework.cloud.contract.stubrunner.spring.StubRunnerProperties
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Import
+import org.springframework.http.HttpStatus
+import org.springframework.test.context.ActiveProfiles
+import org.springframework.web.client.RestTemplate
+import ru.romanow.orders.config.DatabaseTestConfiguration
+import ru.romanow.orders.domain.Order
+import ru.romanow.orders.exceptions.RestRequestException
+import ru.romanow.orders.model.ErrorResponse
+import ru.romanow.orders.model.OrderRequest
+import ru.romanow.orders.model.enums.OrderState
+import java.util.*
+import java.util.UUID.randomUUID
+import javax.persistence.EntityNotFoundException
 
-import javax.persistence.EntityNotFoundException;
-import java.util.List;
-import java.util.UUID;
-
-import static com.google.common.base.Joiner.on;
-import static com.google.common.collect.Lists.newArrayList;
-import static groovy.json.JsonOutput.toJson;
-import static java.lang.String.format;
-import static java.util.UUID.fromString;
-import static java.util.UUID.randomUUID;
-import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
-import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
-
-@DirtiesContext
-@ExtendWith(SpringExtension.class)
-@SpringBootTest(classes = OrdersTestConfiguration.class)
+@Disabled
+@ActiveProfiles("contract-tests")
+@SpringBootTest(classes = [OrderManageServiceTest.OrderManageServiceConfiguration::class])
 @AutoConfigureStubRunner(
-        ids = {
-                "ru.romanow.scc:warehouse:[1.0.0,2.0.0):8070",
-                "ru.romanow.scc:delivery:[1.0.0,2.0.0):8090"
-        },
-        repositoryRoot = "https://dl.bintray.com/ronin/scc-microservices",
-        stubsMode = StubRunnerProperties.StubsMode.REMOTE)
-class OrderManageServiceImplTest {
-    private static final String WAREHOUSE_URL = "http://warehouse:8070/api/v1/items/";
-    private static final String STATE_PATH = "/state";
-
-    private static final UUID ORDER_UID_SUCCESS = UUID.fromString("1a1f775c-4f31-4256-bec1-c3d4e9bf1b52");
-    private static final UUID ORDER_UID_NOT_FOUND = fromString("36856fc6-d6ec-47cb-bbee-d20e78299eb9");
-    private static final UUID ORDER_UID_NOT_AVAILABLE = fromString("37bb4049-1d1e-449f-8ada-5422f8886231");
-    private static final UUID ORDER_UID_ALREADY_EXISTS = fromString("45142058-60e6-4cde-ad13-b968180f0367");
-
-    @MockBean
-    private OrderService orderService;
-
-    @MockBean
-    private UUIDGenerator uuidGenerator;
+    ids = [
+        "ru.romanow.scc:warehouse:[1.0.0,2.0.0):8070",
+        "ru.romanow.scc:delivery:[1.0.0,2.0.0):8090"
+    ],
+    repositoryRoot = "https://dl.bintray.com/ronin/scc-microservices",
+    stubsMode = StubRunnerProperties.StubsMode.REMOTE
+)
+@Import(DatabaseTestConfiguration::class)
+internal class OrderManageServiceTest {
 
     @Autowired
-    private OrderManageService orderManageService;
+    private lateinit var orderService: OrderService
+
+    @Autowired
+    private lateinit var orderManageService: OrderManageService
+
+    @Value("\${warehouse.service.url}")
+    private lateinit var warehouseUrl: String
+
+    private val gson = Gson()
 
     @Test
-    void makeOrderSuccess() {
-        when(uuidGenerator.generate()).thenReturn(ORDER_UID_SUCCESS);
+    fun makeOrderSuccess() {
+        mockStatic(UUID::class.java).use {
+            it.`when`<UUID> { randomUUID() }.thenReturn(ORDER_UID_SUCCESS)
 
-        final List<UUID> items = newArrayList(randomUUID(), randomUUID());
-        final OrderRequest request =
-                new OrderRequest()
-                        .setAddress(randomAlphanumeric(10))
-                        .setFirstName(randomAlphabetic(10))
-                        .setLastName(randomAlphabetic(10))
-                        .setItemUids(items);
-        final UUID orderUid = orderManageService.makeOrder(request);
+            val items = listOf(randomUUID(), randomUUID())
+            val request = OrderRequest(
+                firstName = randomAlphabetic(10),
+                lastName = randomAlphabetic(10),
+                address = randomAlphabetic(10),
+                itemUids = items
+            )
+            val orderUid = orderManageService.makeOrder(request)
 
-        assertEquals(ORDER_UID_SUCCESS, orderUid);
-        verify(orderService, times(1)).createOrder(eq(orderUid), eq(request));
-    }
-
-    @Test
-    void makeOrderAlreadyExists() {
-        when(uuidGenerator.generate()).thenReturn(ORDER_UID_ALREADY_EXISTS);
-
-        final List<UUID> items = newArrayList(randomUUID(), randomUUID());
-        final OrderRequest request =
-                new OrderRequest()
-                        .setAddress(randomAlphanumeric(10))
-                        .setFirstName(randomAlphabetic(10))
-                        .setLastName(randomAlphabetic(10))
-                        .setItemUids(items);
-
-        assertThrows(RestRequestException.class, () -> orderManageService.makeOrder(request));
-    }
-
-    @Test
-    void makeOrderItemsNotAvailable() {
-        when(uuidGenerator.generate()).thenReturn(ORDER_UID_NOT_AVAILABLE);
-
-        final List<UUID> items = newArrayList(randomUUID(), randomUUID());
-        final OrderRequest request =
-                new OrderRequest()
-                        .setAddress(randomAlphanumeric(10))
-                        .setFirstName(randomAlphabetic(10))
-                        .setLastName(randomAlphabetic(10))
-                        .setItemUids(items);
-
-        assertThrows(RestRequestException.class, () -> orderManageService.makeOrder(request));
-    }
-
-    @Test
-    void makeOrderItemsNotFound() {
-        when(uuidGenerator.generate()).thenReturn(ORDER_UID_NOT_FOUND);
-
-        final List<UUID> items = newArrayList(randomUUID(), randomUUID());
-        final OrderRequest request =
-                new OrderRequest()
-                        .setAddress(randomAlphanumeric(10))
-                        .setFirstName(randomAlphabetic(10))
-                        .setLastName(randomAlphabetic(10))
-                        .setItemUids(items);
-
-        assertThrows(RestRequestException.class, () -> orderManageService.makeOrder(request));
-    }
-
-    @Test
-    void statusSuccess() {
-        final List<UUID> itemUids = newArrayList(randomUUID(), randomUUID());
-        when(orderService.getOrderByUid(ORDER_UID_SUCCESS)).thenReturn(buildOrder(ORDER_UID_SUCCESS, itemUids));
-        final OrderInfoResponse status = orderManageService.status(ORDER_UID_SUCCESS);
-
-        assertEquals(ORDER_UID_SUCCESS, status.getOrderUid());
-    }
-
-    @Test
-    void statusOrderNotFound() {
-        final UUID orderUid = randomUUID();
-        when(orderService.getOrderByUid(orderUid))
-                .thenThrow(new EntityNotFoundException(format("Order '%s' not found", orderUid)));
-
-        assertThrows(EntityNotFoundException.class, () -> orderManageService.status(orderUid));
-    }
-
-    @Test
-    void processOrderNotFound() {
-        final UUID orderUid = randomUUID();
-        when(orderService.getOrderByUid(orderUid))
-                .thenThrow(new EntityNotFoundException(format("Order '%s' not found", orderUid)));
-
-        assertThrows(EntityNotFoundException.class, () -> orderManageService.process(orderUid));
-    }
-
-    @Test
-    void processRequestWarehouseError() {
-        final UUID orderUid = ORDER_UID_NOT_FOUND;
-        when(uuidGenerator.generate()).thenReturn(orderUid);
-        final List<UUID> items = newArrayList(randomUUID(), randomUUID());
-        when(orderService.getOrderByUid(orderUid))
-                .thenReturn(buildOrder(orderUid, items));
-
-        try {
-            orderManageService.process(orderUid);
-        } catch (RestRequestException exception) {
-            final String url = format("%s%s%s", WAREHOUSE_URL, orderUid, STATE_PATH);
-            final String responseMessage = JsonOutput.toJson(new ErrorResponse(format("OrderItem '%s' not found", orderUid)));
-            final String message = format("Error request to '%s': %d:%s", url, NOT_FOUND.value(), responseMessage);
-            assertEquals(message, exception.getMessage());
-            return;
+            assertThat(ORDER_UID_SUCCESS).isEqualTo(orderUid)
+            verify(orderService, times(1)).createOrder(eq(orderUid), eq(request))
         }
-        Assertions.fail();
     }
 
     @Test
-    void processRequestSuccess() {
-        final UUID orderUid = ORDER_UID_SUCCESS;
-        when(uuidGenerator.generate()).thenReturn(orderUid);
-        final List<UUID> items = newArrayList(randomUUID(), randomUUID());
-        final Order order = buildOrder(orderUid, items);
-        when(orderService.getOrderByUid(orderUid)).thenReturn(order);
+    fun makeOrderAlreadyExists() {
+        mockStatic(UUID::class.java).use {
+            it.`when`<UUID> { randomUUID() }.thenReturn(ORDER_UID_ALREADY_EXISTS)
 
-        final OrderInfoResponse process = orderManageService.process(orderUid);
-        assertEquals(ORDER_UID_SUCCESS, process.getOrderUid());
-        assertEquals(OrderState.READY_FOR_DELIVERY, process.getState());
-        assertEquals(order.getFirstName(), process.getFirstName());
-        assertEquals(order.getLastName(), process.getLastName());
-        assertEquals(order.getAddress(), process.getAddress());
-        assertEquals(items.size(), process.getItems().size());
+            val items = listOf(randomUUID(), randomUUID())
+            val request = OrderRequest(
+                firstName = randomAlphabetic(10),
+                lastName = randomAlphabetic(10),
+                address = randomAlphabetic(10),
+                itemUids = items
+            )
+
+            assertThrows(RestRequestException::class.java) { orderManageService.makeOrder(request) }
+        }
     }
 
-    private Order buildOrder(UUID orderUid, List<UUID> itemUids) {
-        return new Order()
-                .setUid(orderUid)
-                .setFirstName(randomAlphabetic(10))
-                .setLastName(randomAlphabetic(10))
-                .setAddress(randomAlphanumeric(10))
-                .setItems(on(",").join(itemUids));
+    @Test
+    fun makeOrderItemsNotAvailable() {
+        mockStatic(UUID::class.java).use {
+            it.`when`<UUID> { randomUUID() }.thenReturn(ORDER_UID_NOT_AVAILABLE)
+
+            val items = listOf(randomUUID(), randomUUID())
+            val request = OrderRequest(
+                firstName = randomAlphabetic(10),
+                lastName = randomAlphabetic(10),
+                address = randomAlphabetic(10),
+                itemUids = items
+            )
+            assertThrows(RestRequestException::class.java) { orderManageService.makeOrder(request) }
+        }
+    }
+
+    @Test
+    fun makeOrderItemsNotFound() {
+        mockStatic(UUID::class.java).use {
+            it.`when`<UUID> { randomUUID() }.thenReturn(ORDER_UID_NOT_FOUND)
+
+            val items = listOf(randomUUID(), randomUUID())
+            val request = OrderRequest(
+                firstName = randomAlphabetic(10),
+                lastName = randomAlphabetic(10),
+                address = randomAlphabetic(10),
+                itemUids = items
+            )
+            assertThrows(RestRequestException::class.java) { orderManageService.makeOrder(request) }
+        }
+    }
+
+    @Test
+    fun statusSuccess() {
+        val itemUids = listOf(randomUUID(), randomUUID())
+        `when`(orderService.getOrderByUid(ORDER_UID_SUCCESS))
+            .thenReturn(buildOrder(ORDER_UID_SUCCESS, itemUids))
+
+        val status = orderManageService.status(ORDER_UID_SUCCESS)
+        assertThat(ORDER_UID_SUCCESS).isEqualTo(status.orderUid)
+    }
+
+    @Test
+    fun statusOrderNotFound() {
+        val orderUid = randomUUID()
+        `when`(orderService.getOrderByUid(orderUid))
+            .thenThrow(EntityNotFoundException("Order '$orderUid' not found"))
+        assertThrows(EntityNotFoundException::class.java) { orderManageService.status(orderUid) }
+    }
+
+    @Test
+    fun processOrderNotFound() {
+        val orderUid = randomUUID()
+        `when`(orderService.getOrderByUid(orderUid))
+            .thenThrow(EntityNotFoundException("Order '$orderUid' not found"))
+        assertThrows(EntityNotFoundException::class.java) { orderManageService.process(orderUid) }
+    }
+
+    @Test
+    fun processRequestWarehouseError() {
+        val orderUid = ORDER_UID_NOT_FOUND
+        mockStatic(UUID::class.java).use {
+            it.`when`<UUID> { randomUUID() }.thenReturn(orderUid)
+
+            val items = listOf(randomUUID(), randomUUID())
+            `when`(orderService.getOrderByUid(orderUid)).thenReturn(buildOrder(orderUid, items))
+            try {
+                orderManageService.process(orderUid)
+            } catch (exception: RestRequestException) {
+                val url = "$warehouseUrl/$orderUid/state"
+                val responseMessage = gson.toJson(ErrorResponse("OrderItem '$orderUid' not found"))
+                val message = "Error request to '$url': ${HttpStatus.NOT_FOUND.value()}:$responseMessage"
+                assertThat(message).isEqualTo(exception.message)
+                return
+            }
+            Assertions.fail<Any>()
+        }
+    }
+
+    @Test
+    fun processRequestSuccess() {
+        val orderUid = ORDER_UID_SUCCESS
+        mockStatic(UUID::class.java).use {
+            it.`when`<UUID> { randomUUID() }.thenReturn(orderUid)
+
+            val items = listOf(randomUUID(), randomUUID())
+            val order = buildOrder(orderUid, items)
+            `when`(orderService.getOrderByUid(orderUid)).thenReturn(order)
+
+            val process = orderManageService.process(orderUid)
+            assertThat(ORDER_UID_SUCCESS).isEqualTo(process.orderUid)
+            assertThat(OrderState.READY_FOR_DELIVERY).isEqualTo(process.state)
+            assertThat(order.firstName).isEqualTo(process.firstName)
+            assertThat(order.lastName).isEqualTo(process.lastName)
+            assertThat(order.address).isEqualTo(process.address)
+            assertThat(items.size).isEqualTo(process.items?.size)
+        }
+    }
+
+    private fun buildOrder(orderUid: UUID, itemUids: List<UUID>) =
+        Order(
+            uid = orderUid,
+            firstName = randomAlphabetic(10),
+            lastName = randomAlphabetic(10),
+            address = randomAlphabetic(10),
+            items = itemUids
+        )
+
+    companion object {
+        private val ORDER_UID_SUCCESS = UUID.fromString("1a1f775c-4f31-4256-bec1-c3d4e9bf1b52")
+        private val ORDER_UID_NOT_FOUND = UUID.fromString("36856fc6-d6ec-47cb-bbee-d20e78299eb9")
+        private val ORDER_UID_NOT_AVAILABLE = UUID.fromString("37bb4049-1d1e-449f-8ada-5422f8886231")
+        private val ORDER_UID_ALREADY_EXISTS = UUID.fromString("45142058-60e6-4cde-ad13-b968180f0367")
+    }
+
+    @Configuration
+    class OrderManageServiceConfiguration {
+        @Bean
+        fun restTemplate(): RestTemplate = mock(RestTemplate::class.java)
+
+        @Bean
+        fun orderService(): OrderService = mock(OrderService::class.java)
     }
 }
