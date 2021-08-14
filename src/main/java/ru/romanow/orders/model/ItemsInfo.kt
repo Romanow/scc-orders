@@ -1,17 +1,8 @@
-package ru.romanow.orders.model;
+package ru.romanow.orders.model
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.experimental.Accessors;
+import java.util.*
 
-import java.util.UUID;
-
-@Data
-@Accessors(chain = true)
-@NoArgsConstructor
-@AllArgsConstructor
-public class ItemsInfo {
-    private UUID itemUid;
-    private String name;
-}
+data class ItemsInfo(
+    val itemUid: UUID,
+    val name: String
+)

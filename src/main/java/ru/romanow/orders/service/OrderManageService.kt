@@ -1,19 +1,12 @@
-package ru.romanow.orders.service;
+package ru.romanow.orders.service
 
-import ru.romanow.orders.model.OrderInfoResponse;
-import ru.romanow.orders.model.OrderRequest;
+import ru.romanow.orders.model.OrderInfoResponse
+import ru.romanow.orders.model.OrderRequest
+import java.util.*
+import javax.annotation.Nonnull
 
-import javax.annotation.Nonnull;
-import java.util.UUID;
-
-public interface OrderManageService {
-
-    @Nonnull
-    UUID makeOrder(@Nonnull OrderRequest request);
-
-    @Nonnull
-    OrderInfoResponse status(@Nonnull UUID orderUid);
-
-    @Nonnull
-    OrderInfoResponse process(@Nonnull UUID orderUid);
+interface OrderManageService {
+    fun makeOrder(request: OrderRequest): UUID
+    fun status(orderUid: UUID): OrderInfoResponse
+    fun process(orderUid: UUID): OrderInfoResponse
 }

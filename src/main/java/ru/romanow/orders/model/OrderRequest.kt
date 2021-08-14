@@ -1,26 +1,18 @@
-package ru.romanow.orders.model;
+package ru.romanow.orders.model
 
-import lombok.Data;
-import lombok.experimental.Accessors;
+import java.util.*
+import javax.validation.constraints.NotEmpty
 
-import javax.validation.constraints.NotEmpty;
-import javax.validation.constraints.NotNull;
-import java.util.List;
-import java.util.UUID;
+data class OrderRequest(
+    @field:NotEmpty(message = "{field.is.empty")
+    val itemUids: List<UUID>,
 
-@Data
-@Accessors(chain = true)
-public class OrderRequest {
+    @field:NotEmpty(message = "{field.is.empty")
+    val firstName: String? = null,
 
-    @NotEmpty(message = "{field.is.empty")
-    private List<UUID> itemUids;
+    @field:NotEmpty(message = "{field.is.empty")
+    val lastName: String? = null,
 
-    @NotEmpty(message = "{field.is.empty")
-    private String firstName;
-
-    @NotEmpty(message = "{field.is.empty")
-    private String lastName;
-
-    @NotEmpty(message = "{field.is.empty")
-    private String address;
-}
+    @field:NotEmpty(message = "{field.is.empty")
+    val address: String? = null
+)

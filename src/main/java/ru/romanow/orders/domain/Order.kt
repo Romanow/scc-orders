@@ -1,60 +1,51 @@
-package ru.romanow.orders.domain;
+package ru.romanow.orders.domain
 
-import com.google.common.base.MoreObjects;
-import com.google.common.base.Objects;
-import lombok.Data;
-import lombok.experimental.Accessors;
+import com.vladmihalcea.hibernate.type.array.ListArrayType
+import org.hibernate.annotations.Type
+import org.hibernate.annotations.TypeDef
+import java.util.*
+import javax.persistence.*
 
-import javax.persistence.*;
-import java.util.UUID;
-
-@Data
-@Accessors(chain = true)
 @Entity
 @Table(name = "orders")
-public class Order {
-
+@TypeDef(name = "list-array", typeClass = ListArrayType::class)
+data class Order(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    val id: Int? = null,
 
     @Column(name = "uid", nullable = false, updatable = false)
-    private UUID uid;
+    val uid: UUID? = null,
 
-    @Column(name = "items_uids", nullable = false, updatable = false)
-    private String items;
+    @Type(type = "list-array")
+    @Column(name = "items_uids", nullable = false, columnDefinition = "uuid[]")
+    val items: List<UUID>? = null,
 
     @Column(name = "first_name", length = 80)
-    private String firstName;
+    val firstName: String? = null,
 
     @Column(name = "last_name", length = 80)
-    private String lastName;
+    val lastName: String? = null,
 
     @Column(name = "address")
-    private String address;
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Order order = (Order) o;
-        return Objects.equal(uid, order.uid) &&
-                Objects.equal(items, order.items);
+    val address: String? = null
+) {
+    override fun toString(): String {
+        return "Order(id=$id, uid=$uid, items=$items, firstName=$firstName, lastName=$lastName, address=$address)"
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hashCode(uid, items);
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Order
+
+        if (uid != other.uid) return false
+
+        return true
     }
 
-    @Override
-    public String toString() {
-        return MoreObjects.toStringHelper(this)
-                .add("uid", uid)
-                .add("items", items)
-                .add("firstName", firstName)
-                .add("lastName", lastName)
-                .add("address", address)
-                .toString();
+    override fun hashCode(): Int {
+        return uid?.hashCode() ?: 0
     }
 }

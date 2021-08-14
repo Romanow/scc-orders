@@ -1,11 +1,11 @@
-package ru.romanow.orders;
+package ru.romanow.orders
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.SpringApplication
+import org.springframework.boot.autoconfigure.SpringBootApplication
 
 @SpringBootApplication
-public class OrdersApplication {
-    public static void main(String[] args) {
-        SpringApplication.run(OrdersApplication.class, args);
-    }
+class OrderApplication
+
+fun main(args: Array<String>) {
+    SpringApplication.run(OrderApplication::class.java, *args)
 }
