@@ -8,6 +8,8 @@ import org.springframework.context.annotation.DependsOn
 import org.springframework.context.annotation.Primary
 import org.testcontainers.containers.PostgreSQLContainer
 
+typealias CustomPostgresContainer = PostgreSQLContainer<*>
+
 @TestConfiguration
 class DatabaseTestConfiguration {
     companion object {
@@ -19,7 +21,7 @@ class DatabaseTestConfiguration {
 
     @Bean(destroyMethod = "close")
     fun postgres(): PostgreSQLContainer<*> {
-        val postgres = PostgreSQLContainer<PostgreSQLContainer<*>>(POSTGRES_IMAGE)
+        val postgres = CustomPostgresContainer(POSTGRES_IMAGE)
             .withUsername(USERNAME)
             .withPassword(PASSWORD)
             .withDatabaseName(DATABASE_NAME)

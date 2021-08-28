@@ -1,36 +1,20 @@
 package ru.romanow.orders.web
 
+import io.swagger.v3.oas.annotations.Hidden
 import org.slf4j.LoggerFactory
-import ru.romanow.orders.service.OrderManageService
-import org.springframework.http.ResponseEntity
-import java.lang.Void
-import java.util.UUID
-import org.springframework.web.bind.MethodArgumentNotValidException
-import ru.romanow.orders.web.ExceptionController
-import org.springframework.validation.FieldError
-import java.util.stream.Collectors
-import javax.validation.constraints.NotEmpty
-import ru.romanow.orders.model.enums.OrderState
-import org.springframework.web.client.RestTemplate
-import ru.romanow.orders.service.OrderService
-import ru.romanow.orders.repository.OrdersRepository
-import ru.romanow.orders.service.OrderServiceImpl
-import javax.persistence.EntityNotFoundException
-import ru.romanow.orders.service.OrderManageServiceImpl
-import org.springframework.web.client.RestClientResponseException
-import ru.romanow.orders.exceptions.RestRequestException
-import java.lang.RuntimeException
-import org.springframework.data.jpa.repository.JpaRepository
-import org.springframework.boot.autoconfigure.SpringBootApplication
-import kotlin.jvm.JvmStatic
-import org.springframework.boot.SpringApplication
 import org.springframework.http.HttpStatus
 import org.springframework.validation.BindingResult
-import org.springframework.validation.ObjectError
-import org.springframework.web.bind.annotation.*
-import ru.romanow.orders.model.*
-import java.lang.Exception
+import org.springframework.web.bind.MethodArgumentNotValidException
+import org.springframework.web.bind.annotation.ExceptionHandler
+import org.springframework.web.bind.annotation.ResponseStatus
+import org.springframework.web.bind.annotation.RestControllerAdvice
+import ru.romanow.orders.exceptions.RestRequestException
+import ru.romanow.orders.model.ErrorDescription
+import ru.romanow.orders.model.ErrorResponse
+import ru.romanow.orders.model.ValidationErrorResponse
+import java.util.stream.Collectors
 
+@Hidden
 @RestControllerAdvice
 class ExceptionController {
     private val logger = LoggerFactory.getLogger(ExceptionController::class.java)
@@ -42,9 +26,16 @@ class ExceptionController {
         return ValidationErrorResponse(buildMessage(bindingResult), buildErrors(bindingResult))
     }
 
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(RestRequestException::class)
+    fun conflict(exception: RestRequestException): ErrorResponse {
+        logger.warn(exception.message)
+        return ErrorResponse(exception.message!!)
+    }
+    
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     @ExceptionHandler(RuntimeException::class)
-    fun handleException(exception: RuntimeException): ErrorResponse {
+    fun error(exception: RuntimeException): ErrorResponse {
         logger.error("", exception)
         return ErrorResponse(exception.message!!)
     }

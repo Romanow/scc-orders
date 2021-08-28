@@ -12,28 +12,24 @@ import javax.persistence.*
 data class Order(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Int? = null,
+    var id: Int? = null,
 
     @Column(name = "uid", nullable = false, updatable = false)
-    val uid: UUID? = null,
+    var uid: UUID? = null,
 
     @Type(type = "list-array")
     @Column(name = "items_uids", nullable = false, columnDefinition = "uuid[]")
-    val items: List<UUID>? = null,
+    var items: List<UUID>? = null,
 
     @Column(name = "first_name", length = 80)
-    val firstName: String? = null,
+    var firstName: String? = null,
 
     @Column(name = "last_name", length = 80)
-    val lastName: String? = null,
+    var lastName: String? = null,
 
     @Column(name = "address")
-    val address: String? = null
+    var address: String? = null
 ) {
-    override fun toString(): String {
-        return "Order(id=$id, uid=$uid, items=$items, firstName=$firstName, lastName=$lastName, address=$address)"
-    }
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -47,5 +43,9 @@ data class Order(
 
     override fun hashCode(): Int {
         return uid?.hashCode() ?: 0
+    }
+
+    override fun toString(): String {
+        return "Order(id=$id, uid=$uid, items=$items, firstName=$firstName, lastName=$lastName, address=$address)"
     }
 }

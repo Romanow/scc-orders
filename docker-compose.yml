@@ -1,8 +1,8 @@
 version: "3"
 services:
   postgres:
-    image: library/postgres:13-alpine
-    container_name: postgres
+    image: library/postgres:13
+    container_name: postgres-orders
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: "postgres"
