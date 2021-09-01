@@ -56,7 +56,7 @@ class OrderManageServiceImpl(
     }
 
     private fun makeDeliveryRequest(orderUid: UUID, firstName: String, lastName: String, address: String) {
-        val url = "$deliveryUrl/api/v1/items/$orderUid/deliver"
+        val url = "$deliveryUrl/api/v1/delivery/$orderUid/deliver"
         try {
             val deliveryRequest = DeliveryRequest(firstName, lastName, address)
             restTemplate.postForObject(url, deliveryRequest, Void::class.java)

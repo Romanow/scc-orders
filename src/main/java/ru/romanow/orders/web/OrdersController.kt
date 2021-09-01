@@ -67,7 +67,7 @@ class OrdersController(
             )
         ]
     )
-    @GetMapping(value = ["/{orderUid}"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    @GetMapping(value = ["/{orderUid}/status"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun status(@PathVariable orderUid: UUID): OrderInfoResponse {
         return orderService.status(orderUid)
     }

@@ -67,6 +67,7 @@ dependencies {
     implementation "org.apache.commons:commons-lang3:$commonsLangVersion"
     annotationProcessor "org.springframework.boot:spring-boot-configuration-processor"
 
+    testImplementation "org.mockito:mockito-inline"
     testImplementation "org.springframework.boot:spring-boot-starter-test"
     testImplementation "org.springframework.cloud:spring-cloud-starter-contract-stub-runner"
     testImplementation "org.testcontainers:postgresql:$postgresContainerVersion"
