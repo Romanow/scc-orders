@@ -1,7 +1,6 @@
 package ru.romanow.orders.web
 
 import com.google.gson.Gson
-import org.hamcrest.Matchers
 import org.hamcrest.Matchers.containsInAnyOrder
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -19,16 +18,15 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.transaction.annotation.Transactional
-import org.testcontainers.shaded.org.apache.commons.lang.RandomStringUtils.randomAlphabetic
 import ru.romanow.orders.config.DatabaseTestConfiguration
 import ru.romanow.orders.domain.Order
 import ru.romanow.orders.model.OrderRequest
 import ru.romanow.orders.model.enums.OrderState
 import ru.romanow.orders.repository.OrdersRepository
 import java.util.*
-import kotlin.random.Random
 
 @ActiveProfiles("test")
 @SpringBootTest
@@ -60,9 +58,9 @@ internal class OrdersControllerTest {
                 LEGO_TECHNIC_42082_ITEM_UID,
                 LEGO_TECHNIC_42115_ITEM_UID
             ),
-            firstName = randomAlphabetic(10),
-            lastName = randomAlphabetic(10),
-            address = randomAlphabetic(10)
+            firstName = FIRST_NAME,
+            lastName = LAST_NAME,
+            address = DELIVERY_ADDRESS
         )
         ordersRepository.save(order)
     }
@@ -98,13 +96,21 @@ internal class OrdersControllerTest {
             .andExpect(jsonPath("$.lastName").value(LAST_NAME))
             .andExpect(jsonPath("$.address").value(DELIVERY_ADDRESS))
             .andExpect(jsonPath("$.items").isArray)
-            .andExpect(jsonPath("$.items", containsInAnyOrder(LEGO_TECHNIC_42082_ITEM_UID, LEGO_TECHNIC_42115_ITEM_UID)))
+            .andExpect(
+                jsonPath(
+                    "$.items[*].itemUid",
+                    containsInAnyOrder(
+                        LEGO_TECHNIC_42082_ITEM_UID.toString(),
+                        LEGO_TECHNIC_42115_ITEM_UID.toString()
+                    )
+                )
+            )
     }
 
     @Test
     fun process() {
         mockMvc
-            .perform(get("/api/v1/orders/$ORDER_UID_SUCCESS/process"))
+            .perform(post("/api/v1/orders/$ORDER_UID_SUCCESS/process"))
             .andExpect(MockMvcResultMatchers.status().isOk)
             .andExpect(jsonPath("$.state").value(OrderState.READY_FOR_DELIVERY.name))
             .andExpect(jsonPath("$.orderUid").value(ORDER_UID_SUCCESS.toString()))
@@ -112,7 +118,15 @@ internal class OrdersControllerTest {
             .andExpect(jsonPath("$.lastName").value(LAST_NAME))
             .andExpect(jsonPath("$.address").value(DELIVERY_ADDRESS))
             .andExpect(jsonPath("$.items").isArray)
-            .andExpect(jsonPath("$.items", containsInAnyOrder(LEGO_TECHNIC_42082_ITEM_UID, LEGO_TECHNIC_42115_ITEM_UID)))
+            .andExpect(
+                jsonPath(
+                    "$.items[*].itemUid",
+                    containsInAnyOrder(
+                        LEGO_TECHNIC_42082_ITEM_UID.toString(),
+                        LEGO_TECHNIC_42115_ITEM_UID.toString()
+                    )
+                )
+            )
     }
 
     companion object {
