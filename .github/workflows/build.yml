@@ -19,3 +19,11 @@ jobs:
         with:
           dependencies-cache-enabled: true
           arguments: clean build
+
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: JUnit Tests
+          path: test-results/*.xml
+          reporter: java-junit
