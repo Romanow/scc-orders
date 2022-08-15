@@ -11,6 +11,7 @@ import org.springframework.cloud.contract.stubrunner.spring.AutoConfigureStubRun
 import org.springframework.cloud.contract.stubrunner.spring.StubRunnerProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.test.context.ActiveProfiles
 import org.springframework.web.client.RestTemplate
 import org.testcontainers.shaded.org.apache.commons.lang.RandomStringUtils.randomAlphabetic
 import ru.romanow.orders.domain.Order
@@ -19,19 +20,14 @@ import ru.romanow.orders.model.enums.OrderState
 import java.util.*
 import kotlin.random.Random.Default.nextInt
 
-@SpringBootTest(
-    classes = [OrderManageServiceImplTest.TestConfiguration::class],
-    properties = [
-        "warehouse.service.url=http://localhost:8070",
-        "delivery.service.url=http://localhost:8090"
-    ]
-)
+@ActiveProfiles("test")
+@SpringBootTest(classes = [OrderManageServiceImplTest.TestConfiguration::class])
 @AutoConfigureStubRunner(
     ids = [
-        "ru.romanow.scc:warehouse:[1.0.0,2.0.0):stubs:8070",
-        "ru.romanow.scc:delivery:[1.0.0,2.0.0):stubs:8090"
+        "ru.romanow.scc:warehouse:[1.0.0-SNAPSHOT,2.0.0-SNAPSHOT):stubs:8070",
+        "ru.romanow.scc:delivery:[1.0.0-SNAPSHOT,2.0.0-SNAPSHOT):stubs:8090"
     ],
-    repositoryRoot = "https://romanow.jfrog.io/artifactory/scc-libs-release/",
+    repositoryRoot = "https://maven.pkg.github.com/Romanow/scc-contracts/",
     mappingsOutputFolder = "build/mappings",
     stubsMode = StubRunnerProperties.StubsMode.REMOTE
 )
