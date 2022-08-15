@@ -19,6 +19,8 @@ jobs:
         with:
           dependencies-cache-enabled: true
           arguments: clean build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Test Report
         uses: mikepenz/action-junit-report@v2
